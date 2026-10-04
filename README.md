@@ -34,11 +34,15 @@ See the [SaaS Catalog API v1 contract](contracts/saas-catalog.v1.md).
 ## Deploy
 
 This folder is an independent deploy unit described by [`service.yaml`](service.yaml).
-Build from the repository root; the image contains only this service and the
-files listed in `data.reads`, plus the declared reusable `service-auth` dependency:
+Set `RELEASE_CONTEXT` to this service's isolated exported context outside the
+source checkout. The owner must review its release manifest and metadata
+projection or snapshot before uploading the context or image. This export copies
+the declared catalog snapshot unchanged; it contains this service and the
+declared reusable `service-auth` dependency alongside that snapshot.
 
 ```bash
-docker build -f services/saas-catalog-api/Dockerfile -t solo-empire/saas-catalog-api .
+: "${RELEASE_CONTEXT:?Set RELEASE_CONTEXT to the reviewed saas-catalog-api export}"
+docker build -f "$RELEASE_CONTEXT/services/saas-catalog-api/Dockerfile" -t solo-empire/saas-catalog-api "$RELEASE_CONTEXT"
 ```
 
 The image enforces scoped JWT authorization and binds `0.0.0.0`.
