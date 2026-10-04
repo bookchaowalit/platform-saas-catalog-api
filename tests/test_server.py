@@ -7,6 +7,15 @@ import json
 import sys
 import tempfile
 import unittest
+import time
+import subprocess
+import os
+from unittest.mock import patch
+
+import jwt
+from cryptography.hazmat.primitives.asymmetric import rsa
+from cryptography.hazmat.primitives import serialization
+from service_auth import AuthPolicy
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -48,6 +57,64 @@ class SaasCatalogApiTest(unittest.TestCase):
 
     def get(self, target: str, **kwargs):
         return self.api.handle("GET", target, **kwargs)
+
+    def test_scoped_production_auth_and_safe_errors(self) -> None:
+        key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+        public = key.public_key().public_bytes(
+            serialization.Encoding.PEM, serialization.PublicFormat.SubjectPublicKeyInfo
+        ).decode()
+        policy = AuthPolicy("https://solo.example", "saas-catalog-api", public,
+                            frozenset({"fixture-owner"}), "saas:read")
+        api = SaasCatalogApi(self.path, environment="production", auth_policy=policy)
+        now = int(time.time())
+        claims = dict(iss="https://solo.example", aud="saas-catalog-api", sub="fixture-owner",
+                      tenant_id="owner", scope="saas:read", iat=now, nbf=now,
+                      exp=now+120, jti="fixture-request")
+        def headers(changes=None):
+            return {"Authorization": "Bearer " + jwt.encode(
+                {**claims, **(changes or {})}, key, algorithm="RS256")}
+        self.assertEqual(api.handle("GET", "/health").status, 200)
+        self.assertEqual(api.handle("GET", "/ready").status, 200)
+        self.assertEqual(api.handle("GET", "/api/v1/saas").status, 401)
+        response = api.handle("GET", "/api/v1/saas", headers=headers())
+        self.assertEqual(response.status, 200)
+        self.assertEqual(len(response.payload["source"]["revision"]), 64)
+        for changes, expected in (
+            ({"scope": "other:read"}, 403), ({"tenant_id": "other"}, 403),
+            ({"sub": "other-owner"}, 403), ({"iss": "https://other.example"}, 401),
+            ({"aud": "other-api"}, 401), ({"exp": now-300}, 401),
+            ({"nbf": now+300}, 401),
+        ):
+            with self.subTest(changes=changes):
+                denied = api.handle("GET", "/api/v1/saas", headers=headers(changes))
+                self.assertEqual(denied.status, expected)
+                self.assertEqual(set(denied.payload), {"error"})
+                self.assertNotIn("Bearer", json.dumps(denied.payload))
+        self.assertEqual(api.handle("GET", "/api/v1/saas", headers={"Authorization": "Bearer " + "x"*9000}).status, 401)
+
+    def test_static_token_is_never_production_authorization(self) -> None:
+        with patch.dict(os.environ, {}, clear=True):
+            api = SaasCatalogApi(self.path, token="development-only", environment="production")
+        self.assertEqual(api.handle("GET", "/api/v1/saas",
+                                   headers={"Authorization": "Bearer development-only"}).status, 503)
+        self.assertEqual(api.handle("GET", "/health").status, 200)
+        self.assertEqual(api.handle("GET", "/ready").payload["auth"], "disabled")
+
+    def test_readiness_and_remote_bind_fail_closed(self) -> None:
+        with patch.dict(os.environ, {}, clear=True):
+            api = SaasCatalogApi(self.path, environment="development")
+        self.assertEqual(api.handle("GET", "/ready").payload["auth"], "development")
+        self.assertEqual(api.handle("GET", "/ready").status, 503)
+        self.path.unlink()
+        self.assertEqual(api.handle("GET", "/ready").payload["source"], "unavailable")
+        self.assertEqual(api.handle("GET", "/health").status, 200)
+        env = {**os.environ, "SAAS_CATALOG_API_TOKEN": "legacy-token", "SAAS_CATALOG_API_ENV": "development"}
+        for suffix in ("AUTH_ISSUER", "AUTH_PUBLIC_KEY", "AUTH_SUBJECTS"):
+            env.pop("SAAS_CATALOG_API_" + suffix, None)
+        result = subprocess.run([sys.executable, str(ROOT / "server.py"), "--host", "0.0.0.0"],
+                                env=env, capture_output=True, text=True, timeout=5)
+        self.assertEqual(result.returncode, 2)
+        self.assertIn("SAAS_CATALOG_API_AUTH_*", result.stderr)
 
     def test_card_buckets(self) -> None:
         self.assertEqual(card_bucket("No"), "no_card")

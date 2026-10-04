@@ -12,16 +12,15 @@ Run locally from the repository root with::
     python3 services/saas-catalog-api/server.py
 
 Set ``SAAS_CATALOG_API_CATALOG_PATH`` to use another catalog file and
-``SAAS_CATALOG_API_TOKEN`` before exposing the service outside local development.
+the ``SAAS_CATALOG_API_AUTH_*`` policy before exposing the service outside local development.
 """
 
 from __future__ import annotations
 
 import argparse
-import ipaddress
+import hashlib
 import json
 import os
-import secrets
 from collections import Counter
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -31,6 +30,8 @@ from pathlib import Path
 from threading import RLock
 from typing import Any, Mapping
 from urllib.parse import parse_qs, urlsplit
+
+from service_auth import AuthError, AuthPolicy, check_read_auth, is_loopback, readiness
 
 
 SERVICE_NAME = "solo-empire-saas-catalog-api"
@@ -143,7 +144,8 @@ class CatalogStore:
         with self._lock:
             mtime = self.path.stat().st_mtime
             if self._snapshot is None or mtime != self._mtime:
-                raw = json.loads(self.path.read_text(encoding="utf-8"))
+                source_text = self.path.read_text(encoding="utf-8")
+                raw = json.loads(source_text)
                 if not isinstance(raw, dict) or raw.get("contract") != CATALOG_CONTRACT:
                     raise ValueError("unexpected catalog contract")
                 services = [project_service(row) for row in raw.get("services") or [] if row.get("id")]
@@ -158,6 +160,7 @@ class CatalogStore:
                 workbook = (raw.get("summary") or {}).get("workbook") or {}
                 metadata = {
                     "path": "systems/cloud-platform/free-saas-master-catalog-2026.json",
+                    "revision": hashlib.sha256(source_text.encode("utf-8")).hexdigest(),
                     "snapshot_date": source.get("snapshot_date"),
                     "catalog_date": workbook.get("catalog_date"),
                     "rows_requiring_current_limit_verification": workbook.get("rows_requiring_current_limit_verification"),
@@ -178,21 +181,24 @@ class SaasCatalogApi:
         token: str | None = None,
         environment: str | None = None,
         allowed_origins: tuple[str, ...] | None = None,
+        auth_policy: AuthPolicy | None = None,
     ) -> None:
         self.store = CatalogStore(catalog_path)
         self.token = token if token is not None else os.environ.get("SAAS_CATALOG_API_TOKEN", "").strip()
         self.environment = (environment or os.environ.get("SAAS_CATALOG_API_ENV", "development")).strip().lower()
+        self.auth_policy = auth_policy or AuthPolicy.from_env("SAAS_CATALOG_API_", "saas-catalog-api", "saas:read")
         configured_origins = os.environ.get("SAAS_CATALOG_API_CORS_ORIGINS", "http://127.0.0.1:3600,http://localhost:3600")
         self.allowed_origins = allowed_origins or tuple(item.strip() for item in configured_origins.split(",") if item.strip())
 
     def _check_read_auth(self, headers: Mapping[str, str]) -> None:
-        if self.environment == "production" and not self.token:
-            raise ApiError(503, "Catalog reads are disabled until SAAS_CATALOG_API_TOKEN is configured", code="reads_disabled")
-        if not self.token:
-            return
-        scheme, _, value = headers.get("authorization", "").partition(" ")
-        if scheme.lower() != "bearer" or not secrets.compare_digest(value, self.token):
-            raise ApiError(401, "valid bearer authorization is required", code="unauthorized")
+        try:
+            check_read_auth(self.auth_policy, headers, environment=self.environment, token=self.token)
+        except AuthError as exc:
+            raise ApiError(exc.status, exc.message, code=exc.code) from None
+
+    def _ready(self) -> Response:
+        status, payload = readiness(self.auth_policy, self.environment, self.store)
+        return Response(status, payload)
 
     def _overview(self, query: Mapping[str, list[str]]) -> Response:
         category = query_value(query, "category", MAX_FILTER_LENGTH)
@@ -244,6 +250,8 @@ class SaasCatalogApi:
         try:
             if method == "OPTIONS":
                 return Response(204, {})
+            if method == "GET" and path == "/ready":
+                return self._ready()
             if method == "GET" and path == "/health":
                 return Response(200, {"status": "ok", "service": SERVICE_NAME, "schema_version": SCHEMA_VERSION, "timestamp": utc_now()})
             if path == "/api/v1/saas":
@@ -298,27 +306,20 @@ class SaasCatalogRequestHandler(BaseHTTPRequestHandler):
     do_DELETE = _dispatch
 
 
-def is_loopback(host: str) -> bool:
-    if host == "localhost":
-        return True
-    try:
-        return ipaddress.ip_address(host).is_loopback
-    except ValueError:
-        return False
-
-
 def main() -> None:
     parser = argparse.ArgumentParser(description="Solo Empire free SaaS catalog API")
     parser.add_argument("--host", default=os.environ.get("SAAS_CATALOG_API_HOST", "127.0.0.1"))
-    parser.add_argument("--port", type=int, default=int(os.environ.get("SAAS_CATALOG_API_PORT", "3490")))
+    parser.add_argument("--port", type=int, default=int(os.environ.get("SAAS_CATALOG_API_PORT", os.environ.get("PORT", "3490"))))
     parser.add_argument("--catalog", default=None, help="catalog JSON; defaults to SAAS_CATALOG_API_CATALOG_PATH or systems/cloud-platform/free-saas-master-catalog-2026.json")
     args = parser.parse_args()
     if not 1 <= args.port <= 65535:
         parser.error("--port must be between 1 and 65535")
     if args.catalog:
         SaasCatalogRequestHandler.api = SaasCatalogApi(args.catalog)
-    if not is_loopback(args.host) and not SaasCatalogRequestHandler.api.token:
-        parser.error("a non-loopback --host requires SAAS_CATALOG_API_TOKEN")
+    if not is_loopback(args.host):
+        SaasCatalogRequestHandler.api.environment = "production"
+        if not SaasCatalogRequestHandler.api.auth_policy.ready:
+            parser.error("a non-loopback --host requires valid SAAS_CATALOG_API_AUTH_* configuration")
     server = ThreadingHTTPServer((args.host, args.port), SaasCatalogRequestHandler)
     print(f"{SERVICE_NAME} running on http://{args.host}:{args.port}", flush=True)
     try:

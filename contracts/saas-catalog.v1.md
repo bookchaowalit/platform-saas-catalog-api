@@ -40,3 +40,21 @@ values return `400`; other methods return `405`.
 - Snapshot metadata only: no credential, provider call, or activation.
 - Errors use `{"error": {"code", "message"}}`; a missing file or unexpected
   catalog contract returns `503 catalog_unavailable`.
+
+## Authorization, readiness and snapshot revision
+
+Production GET reads require owner-scoped RS256 JWT authorization using
+`SAAS_CATALOG_API_AUTH_ISSUER`, `SAAS_CATALOG_API_AUTH_PUBLIC_KEY`, and
+`SAAS_CATALOG_API_AUTH_SUBJECTS`. Required audience is `saas-catalog-api`, scope is
+`saas:read`, tenant is `owner`, and subject is an allowed OIDC owner.
+Required `iat/nbf/exp/jti` constrain lifetime to 120 seconds (5 seconds leeway).
+See [runtime configuration](../README.md#scoped-authorization-and-readiness).
+Errors keep the v1 envelope: 401 invalid token, 403 owner/tenant/scope denial,
+503 missing or invalid JWT configuration. Static tokens are local-development only.
+
+`GET /health` remains public liveness. `GET /ready` returns safe
+`status`, `source` (available/unavailable), and `auth`
+(ready/development/disabled); 200 requires parsed source and configured JWT,
+otherwise 503. No metadata rows appear in readiness responses.
+`source.revision` is the SHA-256 source checksum, an additive v1
+field. Source date and reload semantics remain unchanged.
