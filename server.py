@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Read-only projection of the Solo Empire free SaaS catalog.
 
-``systems/cloud-platform/free-saas-master-catalog-2026.json`` stays the
+``data/free-saas-master-catalog-2026.json`` stays the
 canonical generated catalog; this service pages and filters it for the Solo
 Web ``/saas`` module.  It never activates a provider, reads credentials, or
 claims a free tier is current: rows that the catalog marks for verification
@@ -9,7 +9,7 @@ stay marked as such.
 
 Run locally from the repository root with::
 
-    python3 services/saas-catalog-api/server.py
+    python3 server.py
 
 Set ``SAAS_CATALOG_API_CATALOG_PATH`` to use another catalog file and
 the ``SAAS_CATALOG_API_AUTH_*`` policy before exposing the service outside local development.
@@ -73,12 +73,12 @@ def utc_now() -> str:
 
 
 def repository_root() -> Path:
-    return Path(__file__).resolve().parents[2]
+    return Path(__file__).resolve().parent
 
 
 def default_catalog_path() -> Path:
     configured = os.environ.get("SAAS_CATALOG_API_CATALOG_PATH")
-    return Path(configured).expanduser() if configured else repository_root() / "systems" / "cloud-platform" / "free-saas-master-catalog-2026.json"
+    return Path(configured).expanduser() if configured else repository_root() / "data" / "free-saas-master-catalog-2026.json"
 
 
 def query_value(query: Mapping[str, list[str]], field: str, max_length: int) -> str:
@@ -159,7 +159,7 @@ class CatalogStore:
                 source = raw.get("source") or {}
                 workbook = (raw.get("summary") or {}).get("workbook") or {}
                 metadata = {
-                    "path": "systems/cloud-platform/free-saas-master-catalog-2026.json",
+                    "path": "data/free-saas-master-catalog-2026.json",
                     "revision": hashlib.sha256(source_text.encode("utf-8")).hexdigest(),
                     "snapshot_date": source.get("snapshot_date"),
                     "catalog_date": workbook.get("catalog_date"),
@@ -310,7 +310,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Solo Empire free SaaS catalog API")
     parser.add_argument("--host", default=os.environ.get("SAAS_CATALOG_API_HOST", "127.0.0.1"))
     parser.add_argument("--port", type=int, default=int(os.environ.get("SAAS_CATALOG_API_PORT", os.environ.get("PORT", "3490"))))
-    parser.add_argument("--catalog", default=None, help="catalog JSON; defaults to SAAS_CATALOG_API_CATALOG_PATH or systems/cloud-platform/free-saas-master-catalog-2026.json")
+    parser.add_argument("--catalog", default=None, help="catalog JSON; defaults to SAAS_CATALOG_API_CATALOG_PATH or data/free-saas-master-catalog-2026.json")
     args = parser.parse_args()
     if not 1 <= args.port <= 65535:
         parser.error("--port must be between 1 and 65535")

@@ -1,8 +1,16 @@
+# solo-saas-catalog
+
+Moved out of solo-empire `services/saas-catalog-api` on 2026-10-11 with its history (subtree split). `data/free-saas-master-catalog-2026.json` is a dated snapshot copied from solo-empire `systems/cloud-platform/` (the original stays there as reference material); refresh by copying a new file here or point `SAAS_CATALOG_API_CATALOG_PATH` at another path. `vendor/service-auth` is a vendored copy of `bookchaowalit/solo-service-auth`.
+
+Test: `PYTHONPATH=vendor/service-auth python3 -m unittest discover -s tests -v`
+
+---
+
 # Solo Empire SaaS Catalog API
 
 `saas-catalog-api` is a small read-only backend that pages and filters
-[`systems/cloud-platform/free-saas-master-catalog-2026.json`](../../systems/cloud-platform/free-saas-master-catalog-2026.json)
-for the `/saas` module of [`solo-web`](../../projects/product/engineering/book-dev/github/bookchaowalit/private/solo-web/). The catalog
+[`data/free-saas-master-catalog-2026.json`](data/free-saas-master-catalog-2026.json)
+for the `/saas` module of `solo-web` (`bookchaowalit/solo-web`). The catalog
 JSON stays canonical (regenerate it with the existing catalog tooling); the
 service reloads when the file changes and never activates a provider.
 
@@ -12,11 +20,11 @@ UI never presents an unclear row as card-free.
 
 ## Run
 
-From the repository root:
+From this repository root:
 
 ```bash
-python3 -m pip install ./packages/service-auth ./services/saas-catalog-api
-python3 services/saas-catalog-api/server.py
+python3 -m pip install ./vendor/service-auth .
+python3 server.py
 ```
 
 The default listener is `http://127.0.0.1:3490`. Configure
@@ -34,25 +42,10 @@ See the [SaaS Catalog API v1 contract](contracts/saas-catalog.v1.md).
 ## Deploy
 
 This folder is an independent deploy unit described by [`service.yaml`](service.yaml).
-Set `RELEASE_CONTEXT` to this service's isolated exported context outside the
-source checkout. The owner must review its release manifest and metadata
-projection or snapshot before uploading the context or image. This export copies
-the declared catalog snapshot unchanged; it contains this service and the
-declared reusable `service-auth` dependency alongside that snapshot.
+The repository root is the Docker build context (service + `vendor/service-auth` + the `data/` catalog snapshot).
 
 ```bash
-: "${RELEASE_CONTEXT:?Set RELEASE_CONTEXT to the reviewed saas-catalog-api export}"
-docker build -f "$RELEASE_CONTEXT/services/saas-catalog-api/Dockerfile" -t solo-empire/saas-catalog-api "$RELEASE_CONTEXT"
-```
-
-The image enforces scoped JWT authorization and binds `0.0.0.0`.
-`deploy.target` stays `unassigned` until the parent deployment configuration selects a target. `task services:check` reports drift from the
-[decentralized services spec](../../docs/superpowers/specs/2026-10-04-decentralized-services-and-storage-design.md).
-
-## Test
-
-```bash
-python3 services/saas-catalog-api/tests/test_server.py
+docker build -t solo-saas-catalog .
 ```
 
 ## Scoped authorization and readiness

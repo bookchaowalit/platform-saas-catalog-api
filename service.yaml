@@ -5,10 +5,10 @@ port: 3490
 env_prefix: SAAS_CATALOG_API_
 contract: contracts/saas-catalog.v1.md
 health: /health
-dependencies: [packages/service-auth]
+dependencies: [vendor/service-auth]
 data:
   owner: solo-empire-free-saas-catalog
-  reads: [systems/cloud-platform/free-saas-master-catalog-2026.json]
+  reads: [data/free-saas-master-catalog-2026.json]
   writes: []
 secrets: []
 deploy:

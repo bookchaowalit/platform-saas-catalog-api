@@ -3,7 +3,7 @@
 `schema_version: solo-empire.saas-catalog.v1`
 
 Read-only projection of the `solo-empire.free-saas-catalog.v1` file at
-[`systems/cloud-platform/free-saas-master-catalog-2026.json`](../../../systems/cloud-platform/free-saas-master-catalog-2026.json).
+[`data/free-saas-master-catalog-2026.json`](../data/free-saas-master-catalog-2026.json) (snapshot of solo-empire `systems/cloud-platform/free-saas-master-catalog-2026.json`).
 Values are a dated snapshot; verify current limits and terms before activating
 any provider.
 

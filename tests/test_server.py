@@ -19,7 +19,7 @@ from service_auth import AuthPolicy
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-REPO = ROOT.parents[1]
+REPO = ROOT
 sys.path.insert(0, str(ROOT))
 from server import SaasCatalogApi, card_bucket  # noqa: E402
 
@@ -155,7 +155,7 @@ class SaasCatalogApiTest(unittest.TestCase):
         self.assertEqual(self.get("/api/v1/saas").payload["error"]["code"], "catalog_unavailable")
 
     def test_real_catalog_projects(self) -> None:
-        real = REPO / "systems" / "cloud-platform" / "free-saas-master-catalog-2026.json"
+        real = REPO / "data" / "free-saas-master-catalog-2026.json"
         payload = SaasCatalogApi(real, token="", environment="development").handle("GET", "/api/v1/saas").payload
         self.assertEqual(payload["summary"]["services_total"], len(json.loads(real.read_text(encoding="utf-8"))["services"]))
 
