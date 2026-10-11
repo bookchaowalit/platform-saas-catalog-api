@@ -1,6 +1,16 @@
 # solo-saas-catalog
 
-Moved out of solo-empire `services/saas-catalog-api` on 2026-10-11 with its history (subtree split). `data/free-saas-master-catalog-2026.json` is a dated snapshot copied from solo-empire `systems/cloud-platform/` (the original stays there as reference material); refresh by copying a new file here or point `SAAS_CATALOG_API_CATALOG_PATH` at another path. `vendor/service-auth` is a vendored copy of `bookchaowalit/solo-service-auth`.
+Moved out of solo-empire `services/saas-catalog-api` on 2026-10-11 with its history (subtree split). `vendor/service-auth` is a vendored copy of `bookchaowalit/solo-service-auth`.
+
+**Ownership.** solo-empire owns the catalog: `systems/cloud-platform/free-saas-master-catalog-2026.json` is generated there from the source workbook by `task free:saas -- import` (`infra/scripts/discovery/free_saas_catalog.py`), together with the stack selector, the metadata-catalog entries, and the `task free:saas` CLI. `data/free-saas-master-catalog-2026.json` here is only the deployable snapshot (point `SAAS_CATALOG_API_CATALOG_PATH` at another path to override). Keep it fresh with:
+
+```bash
+python3 scripts/sync_catalog.py                 # validate (contract, unique ids) and copy the solo-empire catalog
+python3 scripts/sync_catalog.py --check         # exit 1 when the snapshot is stale (does not write)
+python3 scripts/sync_catalog.py --check --skip-missing   # exit 0 with a warning when solo-empire is not checked out (CI)
+```
+
+The source is `--source`, else `$SOLO_EMPIRE_ROOT/systems/cloud-platform/free-saas-master-catalog-2026.json`, else the nearest ancestor checkout containing `infra/scripts/discovery/free_saas_catalog.py`. From solo-empire: `task saas-catalog:catalog:sync` / `task saas-catalog:catalog:check`.
 
 Test: `PYTHONPATH=vendor/service-auth python3 -m unittest discover -s tests -v`
 
@@ -11,7 +21,7 @@ Test: `PYTHONPATH=vendor/service-auth python3 -m unittest discover -s tests -v`
 `saas-catalog-api` is a small read-only backend that pages and filters
 [`data/free-saas-master-catalog-2026.json`](data/free-saas-master-catalog-2026.json)
 for the `/saas` module of `solo-web` (`bookchaowalit/solo-web`). The catalog
-JSON stays canonical (regenerate it with the existing catalog tooling); the
+JSON stays canonical in solo-empire (regenerate it there, then run the sync command above); the
 service reloads when the file changes and never activates a provider.
 
 The free-text credit-card column is collapsed into `no_card` (exactly "No"),
