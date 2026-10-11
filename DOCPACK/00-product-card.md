@@ -24,7 +24,7 @@ owner: Product owner (Book Dev)
 
 - `server.py` เสนอ API อ่านอย่างเดียวที่แบ่งหน้าและกรอง `data/free-saas-master-catalog-2026.json` และ reload เมื่อไฟล์เปลี่ยน; ไม่เปิดใช้ provider ใด ๆ
 - จัดคอลัมน์บัตรเครดิตเป็น `no_card`, `card_required`, `verify` ตาม README
-- `scripts/sync_catalog.py` ตรวจ contract + unique id และ sync snapshot จาก solo-empire (`--check` ใช้ใน CI)
+- `scripts/validate_catalog.py` ตรวจ contract + unique id ของ snapshot
 
 ## 4. หลักฐานสถานะ
 
@@ -46,7 +46,7 @@ owner: Product owner (Book Dev)
 
 ## 6. ช่องว่างสำคัญ
 
-- snapshot ต้อง sync เองจาก solo-empire ถ้าไม่ sync ข้อมูลเก่า
+- snapshot ต้องถูกเขียนลง repo นี้โดย generator ภายนอก ถ้าไม่อัปเดตข้อมูลเก่า
 - `vendor/service-auth` เป็นสำเนา ต้องอัปเดตตามต้นทาง
 - ไม่มี CI
 
@@ -56,7 +56,7 @@ owner: Product owner (Book Dev)
 
 ## 8. ขั้นต่อไป
 
-1. รัน `python3 scripts/sync_catalog.py --check` ยืนยัน snapshot ล่าสุด
+1. รัน `python3 scripts/validate_catalog.py` ยืนยันรูปแบบ snapshot
 2. เพิ่ม CI รันเทสต์ unittest
 
 ## การอนุมัติ
@@ -68,4 +68,4 @@ owner: Product owner (Book Dev)
 ## แหล่งข้อมูล
 
 - `README.md`
-- `server.py`, `scripts/sync_catalog.py`, `railway.toml`, `tests/`
+- `server.py`, `scripts/validate_catalog.py`, `railway.toml`, `tests/`
