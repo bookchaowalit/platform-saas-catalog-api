@@ -1,0 +1,8 @@
+system_id: bookchaowalit/private/solo-saas-catalog
+prefix: CARD
+brand: "SOLO SAAS CATALOG"
+subtitle: "API อ่านอย่างเดียวสำหรับแค็ตตาล็อก SaaS ฟรีที่ใช้ในโมดูล /saas ของ solo-web"
+footer: "solo-saas-catalog — Product Card"
+color: "#1d6a96"
+audience: internal
+tier: L0
