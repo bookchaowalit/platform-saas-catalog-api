@@ -2,7 +2,7 @@
 
 `saas-catalog-api` is a small read-only backend that pages and filters
 [`systems/cloud-platform/free-saas-master-catalog-2026.json`](../../systems/cloud-platform/free-saas-master-catalog-2026.json)
-for the `/saas` module of [`apps/solo-web`](../../apps/solo-web/). The catalog
+for the `/saas` module of [`solo-web`](../../projects/product/engineering/book-dev/github/bookchaowalit/private/solo-web/). The catalog
 JSON stays canonical (regenerate it with the existing catalog tooling); the
 service reloads when the file changes and never activates a provider.
 
