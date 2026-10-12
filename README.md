@@ -1,6 +1,6 @@
-# solo-saas-catalog
+# saas-catalog
 
-Moved out of solo-empire `services/saas-catalog-api` on 2026-10-11 with its history (subtree split). `vendor/service-auth` is a vendored copy of `bookchaowalit/solo-service-auth`.
+Moved out of solo-empire `services/saas-catalog-api` on 2026-10-11 with its history (subtree split). `vendor/service-auth` is a vendored copy of `bookchaowalit/service-auth`.
 
 **Ownership.** `data/free-saas-master-catalog-2026.json` is the deployable snapshot this repository ships (point `SAAS_CATALOG_API_CATALOG_PATH` at another path to override). The snapshot is produced elsewhere and written into this repository; check its shape with:
 
@@ -16,7 +16,7 @@ Test: `PYTHONPATH=vendor/service-auth python3 -m unittest discover -s tests -v`
 
 `saas-catalog-api` is a small read-only backend that pages and filters
 [`data/free-saas-master-catalog-2026.json`](data/free-saas-master-catalog-2026.json)
-for the `/saas` module of `solo-web` (`bookchaowalit/solo-web`). The catalog
+for the `/saas` module of `solo-web` (`bookchaowalit/owner-web`). The catalog
 JSON snapshot is written into this repository by its generator; the
 service reloads when the file changes and never activates a provider.
 
