@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "saas-catalog": {
+      "command": ".venv/bin/saas-catalog-mcp",
+      "args": []
+    }
+  }
+}
