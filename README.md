@@ -1,5 +1,4 @@
-# saas-catalog
-
+# platform-saas-catalog-api
 Moved out of solo-empire `services/saas-catalog-api` on 2026-10-11 with its history (subtree split). `vendor/service-auth` is a vendored copy of `bookchaowalit/service-auth`.
 
 **Ownership.** `data/free-saas-master-catalog-2026.json` is the deployable snapshot this repository ships (point `SAAS_CATALOG_API_CATALOG_PATH` at another path to override). The snapshot is produced elsewhere and written into this repository; check its shape with:
