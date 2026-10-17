@@ -30,11 +30,18 @@ class ValidateCatalogTest(unittest.TestCase):
         self.assertEqual(self.run_main(catalog("a", "b")), 0)
 
     def test_invalid_shapes_are_rejected(self) -> None:
-        for bad in ({"contract": "x", "services": []}, catalog("a", "a"), [], {"contract": "x", "services": [{"id": "a"}]}):
+        for bad in (
+            {"contract": "x", "services": []},
+            catalog("a", "a"),
+            [],
+            {"contract": "x", "services": [{"id": "a"}]},
+        ):
             self.assertEqual(self.run_main(bad), 2)
 
     def test_missing_file_fails(self) -> None:
-        self.assertEqual(validator.main(["--path", str(self.path.parent / "absent.json")]), 2)
+        self.assertEqual(
+            validator.main(["--path", str(self.path.parent / "absent.json")]), 2
+        )
 
     def test_committed_snapshot_has_valid_shape(self) -> None:
         payload = validator.load_validated(validator.DEST)

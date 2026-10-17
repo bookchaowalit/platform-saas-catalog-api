@@ -18,3 +18,13 @@ dev = ["pytest>=8", "mcp>=2.3,<3", "httpx>=0.27,<1"]
 
 [project.scripts]
 saas-catalog-mcp = "saas_catalog_mcp:main"
+
+[tool.ruff]
+target-version = "py311"
+# vendor/ is a verbatim copy of the shared service-auth package; it is linted where it is maintained.
+extend-exclude = ["vendor"]
+
+[tool.ruff.lint]
+# Pin the classic default rule set (as the sibling repos do) so newer Ruff releases with wider
+# defaults do not change what CI enforces.
+select = ["E4", "E7", "E9", "F"]
