@@ -1,7 +1,6 @@
 """MCP server tests: fake HTTP transport and a throwaway key; no network and no Solo Web."""
 
 import asyncio
-import time
 
 import httpx
 import jwt
