@@ -17,7 +17,9 @@ from pathlib import Path
 from typing import Any
 
 CONTRACT = "solo-empire.free-saas-catalog.v1"
-DEST = Path(__file__).resolve().parents[1] / "data" / "free-saas-master-catalog-2026.json"
+DEST = (
+    Path(__file__).resolve().parents[1] / "data" / "free-saas-master-catalog-2026.json"
+)
 MAX_BYTES = 20 * 1024 * 1024
 
 
@@ -54,7 +56,9 @@ def load_validated(path: Path) -> dict[str, Any]:
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
     parser.add_argument("--path", type=Path, default=DEST, help="snapshot to validate")
     args = parser.parse_args(argv)
     try:
