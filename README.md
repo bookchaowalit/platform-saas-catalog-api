@@ -47,6 +47,11 @@ See the [SaaS Catalog API v1 contract](contracts/saas-catalog.v1.md).
 ## Deploy
 
 This folder is an independent deploy unit described by [`service.yaml`](service.yaml).
+
+Deploys (CD, since 2026-10-18): the Railway service is connected to this repository's `main` with
+Railway's Wait for CI (`checkSuites`). A merge to `main` deploys only after the CI and security
+checks pass; a failing check leaves production on the previous deployment. Roll back by
+redeploying an earlier deployment in Railway. `railway up` is no longer used.
 The repository root is the Docker build context (service + `vendor/service-auth` + the `data/` catalog snapshot).
 
 ```bash
