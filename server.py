@@ -33,6 +33,10 @@ from urllib.parse import parse_qs, urlsplit
 
 from service_auth import AuthError, AuthPolicy, check_read_auth, is_loopback, readiness
 
+from _sentry import capture, init_sentry
+
+init_sentry()
+
 
 SERVICE_NAME = "solo-empire-saas-catalog-api"
 SCHEMA_VERSION = "solo-empire.saas-catalog.v1"
@@ -437,7 +441,8 @@ class SaasCatalogApi:
                     }
                 },
             )
-        except Exception:
+        except Exception as exc:
+            capture(exc)  # no-op unless SENTRY_DSN is set
             return Response(
                 500,
                 {

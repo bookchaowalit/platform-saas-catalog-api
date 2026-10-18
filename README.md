@@ -59,6 +59,8 @@ docker build -t solo-saas-catalog .
 health check (30 seconds), with at most 3 restarts after failure. It declares
 no region, resources, runtime secret values, or existing cloud deployment.
 
+Railway variable `SENTRY_DSN` turns on error reporting (unset = off, see [_sentry.py](_sentry.py)).
+
 Configure `SAAS_CATALOG_API_AUTH_ISSUER` with the exact HTTPS origin of Solo Web,
 `SAAS_CATALOG_API_AUTH_PUBLIC_KEY` with its PEM RSA public key (at least 2048 bits),
 and `SAAS_CATALOG_API_AUTH_SUBJECTS` with the comma-separated allowed OIDC owner
