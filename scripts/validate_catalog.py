@@ -31,7 +31,7 @@ def validate_catalog(payload: Any) -> list[str]:
         errors.append(f"contract must be {CONTRACT}")
     records = payload.get("services")
     if not isinstance(records, list) or not records:
-        return errors + ["services must be a non-empty list"]
+        return [*errors, "services must be a non-empty list"]
     seen: set[str] = set()
     for index, record in enumerate(records):
         ident = record.get("id") if isinstance(record, dict) else None
@@ -48,7 +48,7 @@ def load_validated(path: Path) -> dict[str, Any]:
     raw = path.read_bytes()
     if len(raw) > MAX_BYTES:
         raise ValueError(f"{path} exceeds the {MAX_BYTES} byte catalog limit")
-    payload = json.loads(raw.decode("utf-8"))
+    payload: dict[str, Any] = json.loads(raw.decode("utf-8"))  # a dict once validated
     errors = validate_catalog(payload)
     if errors:
         raise ValueError("invalid catalog: " + "; ".join(errors[:5]))

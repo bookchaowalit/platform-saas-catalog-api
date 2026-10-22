@@ -10,6 +10,8 @@ from pathlib import Path
 
 SCRIPT = Path(__file__).resolve().parents[1] / "scripts" / "validate_catalog.py"
 SPEC = importlib.util.spec_from_file_location("validate_catalog", SCRIPT)
+assert SPEC is not None
+assert SPEC.loader is not None
 validator = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(validator)
 
@@ -27,25 +29,24 @@ class ValidateCatalogTest(unittest.TestCase):
         return validator.main(["--path", str(self.path)])
 
     def test_valid_shape_passes(self) -> None:
-        self.assertEqual(self.run_main(catalog("a", "b")), 0)
+        assert self.run_main(catalog("a", "b")) == 0
 
     def test_invalid_shapes_are_rejected(self) -> None:
+        bad: object
         for bad in (
             {"contract": "x", "services": []},
             catalog("a", "a"),
             [],
             {"contract": "x", "services": [{"id": "a"}]},
         ):
-            self.assertEqual(self.run_main(bad), 2)
+            assert self.run_main(bad) == 2
 
     def test_missing_file_fails(self) -> None:
-        self.assertEqual(
-            validator.main(["--path", str(self.path.parent / "absent.json")]), 2
-        )
+        assert validator.main(["--path", str(self.path.parent / "absent.json")]) == 2
 
     def test_committed_snapshot_has_valid_shape(self) -> None:
         payload = validator.load_validated(validator.DEST)
-        self.assertGreater(len(payload["services"]), 0)
+        assert len(payload["services"]) > 0
 
 
 if __name__ == "__main__":

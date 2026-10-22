@@ -1,12 +1,14 @@
 """MCP server tests: fake HTTP transport and a throwaway key; no network and no Solo Web."""
 
 import asyncio
+import re
 
 import httpx
 import jwt
 import pytest
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
+from mcp.server.mcpserver.exceptions import ToolError
 from service_auth import AuthPolicy
 
 import saas_catalog_mcp as mod
@@ -14,7 +16,7 @@ from saas_catalog_mcp import build_server
 
 API_KEY = mod.URL_KEY
 READS = {"saas.list", "saas.get"}
-WRITES = set()
+WRITES: set[str] = set()
 ARGS = {"saas.get": {"id": "svc-1"}}
 SAMPLES = [
     (
@@ -32,11 +34,10 @@ SAMPLES = [
         {"q": "svc-1", "limit": "100"},
     ),
 ]
-DEFAULT_BODY = {"services": [{"id": "svc-1"}], "source": {}}
+DEFAULT_BODY: dict[str, object] = {"services": [{"id": "svc-1"}], "source": {}}
 ORIGIN = "https://solo-web.example"
 SUB = "owner-subject-1"
 
-DEFAULT_BODY = globals().get("DEFAULT_BODY", {"items": []})
 IDENTITY = {
     "actor": "x",
     "workspace_id": "w",
@@ -136,7 +137,7 @@ def test_sample_calls_map_to_the_api():
 
 
 @pytest.mark.parametrize(
-    "status,message",
+    ("status", "message"),
     [
         (400, "400: invalid"),
         (401, "401: unauthorized"),
@@ -159,15 +160,15 @@ def test_errors_are_a_fixed_message_from_the_status_only(status, message):
         },
         "error": {"code": "leak-code", "message": "do-not-leak"},
     }
-    name = sorted(READS)[0]
-    with pytest.raises(Exception) as caught:
+    name = min(READS)
+    with pytest.raises(ToolError, match=re.escape(": " + message) + "$") as caught:
         call(server(Fake(status=status, body=secret)), name, ARGS.get(name, {}))
-    assert str(caught.value).endswith(": " + message)
-    assert "leak" not in str(caught.value) and "tok-123" not in str(caught.value)
+    assert "leak" not in str(caught.value)
+    assert "tok-123" not in str(caught.value)
 
 
 def test_token_with_whitespace_or_control_characters_is_refused_without_echo():
-    name = sorted(READS)[0]
+    name = min(READS)
     for bad in (
         "two words-abcdefgh",
         "line\nbreak-abcdefgh",
@@ -177,11 +178,9 @@ def test_token_with_whitespace_or_control_characters_is_refused_without_echo():
     ):
         fake = Fake()
         srv = build_server(fake.client(), lambda bad=bad: bad).server
-        with pytest.raises(Exception) as caught:
+        with pytest.raises(ToolError, match=r"401: unauthorized$") as caught:
             call(srv, name, ARGS.get(name, {}))
-        assert str(caught.value).endswith(
-            "401: unauthorized"
-        ) and "abcdefgh" not in str(caught.value)
+        assert "abcdefgh" not in str(caught.value)
         assert fake.requests == []
 
 
@@ -201,14 +200,15 @@ def test_no_tool_exposes_a_forbidden_argument_name():
     assert forbidden == set(mod.FORBIDDEN_ARGUMENTS)
     for tool in asyncio.run(server(Fake()).list_tools()):
         assert not forbidden & set(tool.input_schema["properties"]), tool.name
-    with pytest.raises(ValueError):
 
-        class Bad(mod.Strict):
-            actor: str = "x"
+    class Bad(mod.Strict):
+        actor: str = "x"
 
-        mod.Toolbox("x", "x", Fake().client(), lambda: "t").tool("x.bad", Bad, "bad")(
-            lambda a: a
-        )
+    register = mod.Toolbox("x", "x", Fake().client(), lambda: "t").tool(
+        "x.bad", Bad, "bad"
+    )
+    with pytest.raises(ValueError, match="identity arguments are not allowed"):
+        register(lambda a: a)
 
 
 def test_transport_failure_does_not_echo_the_error():
@@ -219,9 +219,9 @@ def test_transport_failure_does_not_echo_the_error():
         httpx.Client(transport=httpx.MockTransport(boom), base_url="https://api.test"),
         lambda: "tok-123",
     ).server
-    with pytest.raises(Exception) as caught:
-        call(srv, sorted(READS)[0], ARGS.get(sorted(READS)[0], {}))
-    assert "tok-123" not in str(caught.value) and "503" in str(caught.value)
+    with pytest.raises(ToolError, match="503") as caught:
+        call(srv, min(READS), ARGS.get(min(READS), {}))
+    assert "tok-123" not in str(caught.value)
 
 
 @pytest.fixture(scope="module")
@@ -269,7 +269,8 @@ def test_minted_token_is_accepted_by_the_backends_own_verifier(env, keys):
         mod.SCOPE,
     )
     claims = jwt.decode(token, options={"verify_signature": False})
-    assert claims["aud"] == mod.AUDIENCE and 0 < claims["exp"] - claims["iat"] <= 60
+    assert claims["aud"] == mod.AUDIENCE
+    assert 0 < claims["exp"] - claims["iat"] <= 60
     assert mod.mint(env) != token  # a fresh jti every time
 
 
@@ -281,7 +282,7 @@ def test_minted_token_is_rejected_for_another_audience_scope_or_subject(env, key
         (mod.AUDIENCE, mod.SCOPE, {"someone-else"}),
     ):
         policy = AuthPolicy(ORIGIN, audience, keys[1], frozenset(subjects), scope)
-        with pytest.raises(Exception):
+        with pytest.raises(Exception):  # noqa: B017, PT011 - any refusal passes; the error type differs per case
             policy.authenticate({"authorization": f"Bearer {token}"})
 
 
@@ -330,7 +331,7 @@ def test_ready_token_overrides_minting_and_is_cleaned():
 def test_every_tool_call_sends_a_freshly_minted_token(env, keys, monkeypatch):
     fake = Fake()
     srv = build_server(fake.client(), lambda: mod.mint(env)).server
-    name = sorted(READS)[0]
+    name = min(READS)
     call(srv, name, ARGS.get(name, {}))
     call(srv, name, ARGS.get(name, {}))
     seen = [r.headers["authorization"].removeprefix("Bearer ") for r in fake.requests]
@@ -363,7 +364,8 @@ def test_saas_get_returns_only_the_exact_id_and_404s_otherwise():
         }
     )
     out = call(server(fake), "saas.get", {"id": "svc-1"}).content[0].text
-    assert '"svc-1"' in out and "svc-10" not in out
+    assert '"svc-1"' in out
+    assert "svc-10" not in out
     with pytest.raises(Exception, match="404: not_found"):
         call(
             server(Fake(body={"services": [{"id": "svc-10"}]})),
@@ -372,7 +374,7 @@ def test_saas_get_returns_only_the_exact_id_and_404s_otherwise():
         )
 
 
-def _chain(exc: BaseException):
+def _chain(exc: BaseException | None):
     seen = []
     while exc is not None and exc not in seen:
         seen.append(exc)
@@ -394,17 +396,17 @@ def test_validation_errors_are_fixed_and_name_no_argument_or_value():
             for field in tool.input_schema["properties"]
         ]
         for args in attempts:
-            try:
+            with pytest.raises(ToolError, match=r"invalid_arguments$") as caught:
                 call(srv, name, args)
-            except Exception as exc:  # noqa: BLE001
-                rejected[name] = rejected.get(name, 0) + 1
-                assert str(exc).endswith("invalid_arguments") and "MARKER" not in str(
-                    exc
-                )
-                assert exc.__cause__ is None and exc.__context__ is None
-                for link in _chain(exc):
-                    assert "MARKER" not in str(link) and "MARKER" not in repr(link)
+            rejected[name] = rejected.get(name, 0) + 1
+            exc = caught.value
+            assert "MARKER" not in str(exc)
+            assert exc.__cause__ is None
+            assert exc.__context__ is None
+            for link in _chain(exc):
+                assert "MARKER" not in str(link)
+                assert "MARKER" not in repr(link)
     assert set(rejected) == READS | WRITES
-    with pytest.raises(Exception) as caught:
+    with pytest.raises(ToolError, match="unknown_tool") as caught:
         call(srv, "x.UNTRUSTED_MARKER", {"a": "VALUE_MARKER"})
     assert "MARKER" not in str(caught.value) + repr(caught.value)

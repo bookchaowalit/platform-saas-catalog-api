@@ -4,24 +4,24 @@
 from __future__ import annotations
 
 import json
+import os
+import subprocess
 import sys
 import tempfile
-import unittest
 import time
-import subprocess
-import os
+import unittest
+from pathlib import Path
 from unittest.mock import patch
 
 import jwt
-from cryptography.hazmat.primitives.asymmetric import rsa
 from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives.asymmetric import rsa
 from service_auth import AuthPolicy
-from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 REPO = ROOT
 sys.path.insert(0, str(ROOT))
-from server import SaasCatalogApi, card_bucket  # noqa: E402
+from server import SaasCatalogApi, card_bucket  # noqa: E402 - after the repo root is on sys.path
 
 
 def service(service_id: str, **fields):
@@ -108,17 +108,17 @@ class SaasCatalogApiTest(unittest.TestCase):
         )
         api = SaasCatalogApi(self.path, environment="production", auth_policy=policy)
         now = int(time.time())
-        claims = dict(
-            iss="https://solo.example",
-            aud="saas-catalog-api",
-            sub="fixture-owner",
-            tenant_id="owner",
-            scope="saas:read",
-            iat=now,
-            nbf=now,
-            exp=now + 120,
-            jti="fixture-request",
-        )
+        claims = {
+            "iss": "https://solo.example",
+            "aud": "saas-catalog-api",
+            "sub": "fixture-owner",
+            "tenant_id": "owner",
+            "scope": "saas:read",
+            "iat": now,
+            "nbf": now,
+            "exp": now + 120,
+            "jti": "fixture-request",
+        }
 
         def headers(changes=None):
             return {
@@ -126,12 +126,12 @@ class SaasCatalogApiTest(unittest.TestCase):
                 + jwt.encode({**claims, **(changes or {})}, key, algorithm="RS256")
             }
 
-        self.assertEqual(api.handle("GET", "/health").status, 200)
-        self.assertEqual(api.handle("GET", "/ready").status, 200)
-        self.assertEqual(api.handle("GET", "/api/v1/saas").status, 401)
+        assert api.handle("GET", "/health").status == 200
+        assert api.handle("GET", "/ready").status == 200
+        assert api.handle("GET", "/api/v1/saas").status == 401
         response = api.handle("GET", "/api/v1/saas", headers=headers())
-        self.assertEqual(response.status, 200)
-        self.assertEqual(len(response.payload["source"]["revision"]), 64)
+        assert response.status == 200
+        assert len(response.payload["source"]["revision"]) == 64
         for changes, expected in (
             ({"scope": "other:read"}, 403),
             ({"tenant_id": "other"}, 403),
@@ -143,14 +143,14 @@ class SaasCatalogApiTest(unittest.TestCase):
         ):
             with self.subTest(changes=changes):
                 denied = api.handle("GET", "/api/v1/saas", headers=headers(changes))
-                self.assertEqual(denied.status, expected)
-                self.assertEqual(set(denied.payload), {"error"})
-                self.assertNotIn("Bearer", json.dumps(denied.payload))
-        self.assertEqual(
+                assert denied.status == expected
+                assert set(denied.payload) == {"error"}
+                assert "Bearer" not in json.dumps(denied.payload)
+        assert (
             api.handle(
                 "GET", "/api/v1/saas", headers={"Authorization": "Bearer " + "x" * 9000}
-            ).status,
-            401,
+            ).status
+            == 401
         )
 
     def test_static_token_is_never_production_authorization(self) -> None:
@@ -158,25 +158,25 @@ class SaasCatalogApiTest(unittest.TestCase):
             api = SaasCatalogApi(
                 self.path, token="development-only", environment="production"
             )
-        self.assertEqual(
+        assert (
             api.handle(
                 "GET",
                 "/api/v1/saas",
                 headers={"Authorization": "Bearer development-only"},
-            ).status,
-            503,
+            ).status
+            == 503
         )
-        self.assertEqual(api.handle("GET", "/health").status, 200)
-        self.assertEqual(api.handle("GET", "/ready").payload["auth"], "disabled")
+        assert api.handle("GET", "/health").status == 200
+        assert api.handle("GET", "/ready").payload["auth"] == "disabled"
 
     def test_readiness_and_remote_bind_fail_closed(self) -> None:
         with patch.dict(os.environ, {}, clear=True):
             api = SaasCatalogApi(self.path, environment="development")
-        self.assertEqual(api.handle("GET", "/ready").payload["auth"], "development")
-        self.assertEqual(api.handle("GET", "/ready").status, 503)
+        assert api.handle("GET", "/ready").payload["auth"] == "development"
+        assert api.handle("GET", "/ready").status == 503
         self.path.unlink()
-        self.assertEqual(api.handle("GET", "/ready").payload["source"], "unavailable")
-        self.assertEqual(api.handle("GET", "/health").status, 200)
+        assert api.handle("GET", "/ready").payload["source"] == "unavailable"
+        assert api.handle("GET", "/health").status == 200
         env = {
             **os.environ,
             "SAAS_CATALOG_API_TOKEN": "legacy-token",
@@ -191,68 +191,50 @@ class SaasCatalogApiTest(unittest.TestCase):
             text=True,
             timeout=5,
         )
-        self.assertEqual(result.returncode, 2)
-        self.assertIn("SAAS_CATALOG_API_AUTH_*", result.stderr)
+        assert result.returncode == 2
+        assert "SAAS_CATALOG_API_AUTH_*" in result.stderr
 
     def test_card_buckets(self) -> None:
-        self.assertEqual(card_bucket("No"), "no_card")
-        self.assertEqual(card_bucket("No/Varies"), "verify")
-        self.assertEqual(card_bucket("Yes/Varies"), "card_required")
-        self.assertEqual(card_bucket(None), "verify")
+        assert card_bucket("No") == "no_card"
+        assert card_bucket("No/Varies") == "verify"
+        assert card_bucket("Yes/Varies") == "card_required"
+        assert card_bucket(None) == "verify"
 
     def test_overview(self) -> None:
         payload = self.get("/api/v1/saas").payload
-        self.assertEqual(payload["schema_version"], "solo-empire.saas-catalog.v1")
-        self.assertEqual(
-            payload["summary"],
-            {
-                "services_total": 3,
-                "services_matched": 3,
-                "categories": 2,
-                "no_card": 1,
-                "commercial_yes": 1,
-                "needs_verification": 1,
-            },
-        )
-        self.assertEqual(payload["starter_stacks"][0]["fallback_1"], None)
+        assert payload["schema_version"] == "solo-empire.saas-catalog.v1"
+        assert payload["summary"] == {
+            "services_total": 3,
+            "services_matched": 3,
+            "categories": 2,
+            "no_card": 1,
+            "commercial_yes": 1,
+            "needs_verification": 1,
+        }
+        assert payload["starter_stacks"][0]["fallback_1"] is None
         services = {item["id"]: item for item in payload["services"]}
-        self.assertIsNone(services["bigcloud"]["official_url"])
-        self.assertEqual(services["bigcloud"]["card_bucket"], "card_required")
+        assert services["bigcloud"]["official_url"] is None
+        assert services["bigcloud"]["card_bucket"] == "card_required"
 
     def test_filters_and_paging(self) -> None:
-        self.assertEqual(
-            [
-                s["id"]
-                for s in self.get("/api/v1/saas?card=no_card").payload["services"]
-            ],
-            ["workers"],
-        )
-        self.assertEqual(
-            [
-                s["id"]
-                for s in self.get("/api/v1/saas?category=Database").payload["services"]
-            ],
-            ["bigcloud"],
-        )
-        self.assertEqual(
-            [
-                s["id"]
-                for s in self.get("/api/v1/saas?commercial=yes").payload["services"]
-            ],
-            ["workers"],
-        )
-        self.assertEqual(
-            [
-                s["id"]
-                for s in self.get("/api/v1/saas?q=edge%20apis").payload["services"]
-            ],
-            ["workers"],
-        )
+        assert [
+            s["id"] for s in self.get("/api/v1/saas?card=no_card").payload["services"]
+        ] == ["workers"]
+        assert [
+            s["id"]
+            for s in self.get("/api/v1/saas?category=Database").payload["services"]
+        ] == ["bigcloud"]
+        assert [
+            s["id"] for s in self.get("/api/v1/saas?commercial=yes").payload["services"]
+        ] == ["workers"]
+        assert [
+            s["id"] for s in self.get("/api/v1/saas?q=edge%20apis").payload["services"]
+        ] == ["workers"]
         page = self.get("/api/v1/saas?limit=1&offset=1").payload
-        self.assertEqual(
-            (page["summary"]["services_matched"], [s["id"] for s in page["services"]]),
-            (3, ["bigcloud"]),
-        )
+        assert (
+            page["summary"]["services_matched"],
+            [s["id"] for s in page["services"]],
+        ) == (3, ["bigcloud"])
         for bad in (
             "card=maybe",
             "commercial=no",
@@ -261,30 +243,30 @@ class SaasCatalogApiTest(unittest.TestCase):
             "offset=-1",
             "limit=x",
         ):
-            self.assertEqual(self.get(f"/api/v1/saas?{bad}").status, 400, bad)
+            assert self.get(f"/api/v1/saas?{bad}").status == 400, bad
 
     def test_read_only_auth_and_failures(self) -> None:
-        self.assertEqual(self.api.handle("POST", "/api/v1/saas").status, 405)
-        self.assertEqual(self.get("/api/v1/other").status, 404)
+        assert self.api.handle("POST", "/api/v1/saas").status == 405
+        assert self.get("/api/v1/other").status == 404
         guarded = SaasCatalogApi(self.path, token="t0ken", environment="development")
-        self.assertEqual(guarded.handle("GET", "/api/v1/saas").status, 401)
-        self.assertEqual(
+        assert guarded.handle("GET", "/api/v1/saas").status == 401
+        assert (
             guarded.handle(
                 "GET", "/api/v1/saas", headers={"Authorization": "Bearer t0ken"}
-            ).status,
-            200,
+            ).status
+            == 200
         )
-        self.assertEqual(
+        assert (
             SaasCatalogApi(self.path, token="", environment="production")
             .handle("GET", "/api/v1/saas")
-            .status,
-            503,
+            .status
+            == 503
         )
         self.path.write_text(
             json.dumps({**CATALOG, "contract": "other"}), encoding="utf-8"
         )
-        self.assertEqual(
-            self.get("/api/v1/saas").payload["error"]["code"], "catalog_unavailable"
+        assert (
+            self.get("/api/v1/saas").payload["error"]["code"] == "catalog_unavailable"
         )
 
     def test_real_catalog_projects(self) -> None:
@@ -294,9 +276,8 @@ class SaasCatalogApiTest(unittest.TestCase):
             .handle("GET", "/api/v1/saas")
             .payload
         )
-        self.assertEqual(
-            payload["summary"]["services_total"],
-            len(json.loads(real.read_text(encoding="utf-8"))["services"]),
+        assert payload["summary"]["services_total"] == len(
+            json.loads(real.read_text(encoding="utf-8"))["services"]
         )
 
 

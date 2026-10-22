@@ -22,13 +22,14 @@ import hashlib
 import json
 import os
 from collections import Counter
+from collections.abc import Mapping
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from threading import RLock
-from typing import Any, Mapping
+from typing import Any
 from urllib.parse import parse_qs, urlsplit
 
 from service_auth import AuthError, AuthPolicy, check_read_auth, is_loopback, readiness
@@ -94,12 +95,7 @@ class Response:
 
 
 def utc_now() -> str:
-    return (
-        datetime.now(timezone.utc)
-        .replace(microsecond=0)
-        .isoformat()
-        .replace("+00:00", "Z")
-    )
+    return datetime.now(UTC).replace(microsecond=0).isoformat().replace("+00:00", "Z")
 
 
 def repository_root() -> Path:
@@ -155,7 +151,7 @@ def card_bucket(value: str | None) -> str:
     text = (value or "").strip().lower()
     if text == "no":
         return "no_card"
-    if text.startswith("yes") or text.startswith("billing"):
+    if text.startswith(("yes", "billing")):
         return "card_required"
     return "verify"
 
@@ -165,7 +161,7 @@ def commercial_bucket(value: str | None) -> str:
 
 
 def project_service(row: Mapping[str, Any]) -> dict[str, Any]:
-    service = {"id": str(row["id"])[:80]}
+    service: dict[str, str | None] = {"id": str(row["id"])[:80]}
     for field in TEXT_FIELDS:
         value = row.get(field)
         service[field] = None if value in (None, "") else str(value)[:400]
@@ -232,7 +228,7 @@ class CatalogStore:
                     "rows_requiring_current_limit_verification": workbook.get(
                         "rows_requiring_current_limit_verification"
                     ),
-                    "modified_at": datetime.fromtimestamp(mtime, timezone.utc)
+                    "modified_at": datetime.fromtimestamp(mtime, UTC)
                     .replace(microsecond=0)
                     .isoformat()
                     .replace("+00:00", "Z"),
@@ -441,7 +437,7 @@ class SaasCatalogApi:
                     }
                 },
             )
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001 - last-resort 500 that never echoes internal error text
             capture(exc)  # no-op unless SENTRY_DSN is set
             return Response(
                 500,
@@ -457,7 +453,7 @@ class SaasCatalogApi:
 class SaasCatalogRequestHandler(BaseHTTPRequestHandler):
     api = SaasCatalogApi()
 
-    def log_message(self, format: str, *args: Any) -> None:  # noqa: A002
+    def log_message(self, format: str, *args: Any) -> None:
         return
 
     def _dispatch(self) -> None:
@@ -553,4 +549,4 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    main()

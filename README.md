@@ -7,7 +7,7 @@ Moved out of solo-empire `services/saas-catalog-api` on 2026-10-11 with its hist
 python3 scripts/validate_catalog.py             # contract, non-empty services, unique ids
 ```
 
-Test: `PYTHONPATH=vendor/service-auth python3 -m unittest discover -s tests -v`
+Test: `uv sync --frozen --all-extras && uv run pytest -q` (see [Test](#test))
 
 ---
 
@@ -28,8 +28,8 @@ UI never presents an unclear row as card-free.
 From this repository root:
 
 ```bash
-python3 -m pip install ./vendor/service-auth .
-python3 server.py
+uv sync --frozen --no-dev   # installs from uv.lock, including vendor/service-auth
+uv run python server.py
 ```
 
 The default listener is `http://127.0.0.1:3490`. Configure
@@ -43,6 +43,15 @@ GET /api/v1/saas?category=&card=&commercial=&q=&limit=&offset=
 ```
 
 See the [SaaS Catalog API v1 contract](contracts/saas-catalog.v1.md).
+
+## Test
+
+```bash
+uv sync --frozen --all-extras          # dependencies from uv.lock (vendor/service-auth is a path source)
+uvx ruff@0.17.1 check . && uvx ruff@0.17.1 format --check .
+uv run mypy .                           # strict on server.py, _sentry.py, saas_catalog_mcp.py, scripts/
+uv run pytest -q --cov                  # CI gates total coverage (see .github/workflows/ci.yml)
+```
 
 ## Deploy
 
@@ -120,6 +129,6 @@ Trade-off: the signing key can mint tokens for every Solo Web service, so only r
 that already holds that key. A narrower alternative, if the key must not sit beside agents, is a Solo Web owner-session
 endpoint that issues a per-service token; set `EMPIRE_TOKEN` from it and the key is never read.
 
-Run: `uv venv .venv && uv pip install ./vendor/service-auth -e ".[dev]"`, then `.venv/bin/saas-catalog-mcp` (see `.mcp.json`).
+Run: `uv sync --frozen --all-extras`, then `.venv/bin/saas-catalog-mcp` (see `.mcp.json`).
 Tests: `.venv/bin/pytest tests/test_mcp.py` (fake HTTP transport and a throwaway key; the minted token is checked with
 the vendored `service_auth` verifier the API uses).
