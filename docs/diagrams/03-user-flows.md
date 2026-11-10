@@ -57,7 +57,7 @@ flowchart LR
     RQ -->|"no"| R503["503 not_ready with source and auth state"]
 ```
 
-Sources: `server.py`, `vendor/service-auth/service_auth/__init__.py` (`readiness`), `railway.toml`, `Dockerfile`
+Sources: `server.py`, `vendor/service-auth/service_auth/__init__.py` (`readiness`), `.railway/railway.ts`, `Dockerfile`
 
 ## Open questions
 

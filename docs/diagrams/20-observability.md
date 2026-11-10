@@ -29,7 +29,7 @@ flowchart LR
 | Heartbeat | none | — | not needed (no scheduled job) |
 | Product analytics | none | — | — |
 
-Sources: `server.py`, `_sentry.py`, `Dockerfile`, `railway.toml`, `PRODUCT.md` "Measures", platform-uptime-worker `src/targets.ts` (read-only)
+Sources: `server.py`, `_sentry.py`, `Dockerfile`, `.railway/railway.ts`, `PRODUCT.md` "Measures", platform-uptime-worker `src/targets.ts` (read-only)
 
 ## Open questions
 

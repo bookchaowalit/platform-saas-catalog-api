@@ -35,7 +35,7 @@ owner: Product owner (Book Dev)
 | Source | ประมาณ 971 บรรทัดใน 6 ไฟล์ (ไม่รวมเทสต์) |
 | Tests | 3 ไฟล์ |
 | CI | ไม่มี |
-| Deploy config | `Dockerfile`, `railway.toml`, `service.yaml`; ไม่ได้ตรวจ live |
+| Deploy config | `Dockerfile`, `.railway/railway.ts`, `service.yaml`; ไม่ได้ตรวจ live |
 | Live URL | ไม่มี (ไม่ได้ตรวจ) |
 | README | 94 บรรทัด |
 
@@ -68,4 +68,4 @@ owner: Product owner (Book Dev)
 ## แหล่งข้อมูล
 
 - `README.md`
-- `server.py`, `scripts/validate_catalog.py`, `railway.toml`, `tests/`
+- `server.py`, `scripts/validate_catalog.py`, `.railway/railway.ts`, `tests/`

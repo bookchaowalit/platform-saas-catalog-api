@@ -106,4 +106,4 @@ sequenceDiagram
     end
 ```
 
-Sources: `server.py` (`main`), `Dockerfile`, `railway.toml`, `_sentry.py`, `vendor/service-auth/service_auth/__init__.py`
+Sources: `server.py` (`main`), `Dockerfile`, `.railway/railway.ts`, `_sentry.py`, `vendor/service-auth/service_auth/__init__.py`

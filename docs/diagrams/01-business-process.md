@@ -24,7 +24,7 @@ flowchart LR
 
 ขั้นตอน "verify current terms" อยู่นอกระบบ: payload มีแค่ข้อความ `boundary` ว่า "verify current limits and terms before activating any provider" ระบบไม่บันทึกว่า verify แล้วหรือยัง
 
-Sources: `server.py`, `scripts/validate_catalog.py`, `Dockerfile`, `railway.toml`, `.railway/railway.ts`, `saas_catalog_mcp.py`, `README.md`, `PRODUCT.md`, `contracts/saas-catalog.v1.md`, Solo Web `lib/backends.ts` + `modules/saas/api.ts` (life-dashboard-web `09c1001`, read-only)
+Sources: `server.py`, `scripts/validate_catalog.py`, `Dockerfile`, `.railway/railway.ts`, `.railway/railway.ts`, `saas_catalog_mcp.py`, `README.md`, `PRODUCT.md`, `contracts/saas-catalog.v1.md`, Solo Web `lib/backends.ts` + `modules/saas/api.ts` (life-dashboard-web `09c1001`, read-only)
 
 ## To-Be
 

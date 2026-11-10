@@ -25,9 +25,9 @@ flowchart TD
 |---|---|
 | Telegram via platform-uptime-worker | platform-uptime-worker `src/targets.ts` (target `saas-catalog-api`) and its `README.md` (read-only) |
 | Sentry | `_sentry.py`, `README.md` |
-| Railway deploy result | `railway.toml`, `README.md` "Deploy" |
+| Railway deploy result | `.railway/railway.ts`, `README.md` "Deploy" |
 
-Sources: `README.md`, `railway.toml`, `_sentry.py`, `server.py`, `scripts/validate_catalog.py`, `vendor/service-auth/service_auth/__init__.py`, platform-uptime-worker `src/targets.ts` (read-only)
+Sources: `README.md`, `.railway/railway.ts`, `_sentry.py`, `server.py`, `scripts/validate_catalog.py`, `vendor/service-auth/service_auth/__init__.py`, platform-uptime-worker `src/targets.ts` (read-only)
 
 ## Open questions
 

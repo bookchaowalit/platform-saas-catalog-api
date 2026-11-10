@@ -45,7 +45,7 @@ flowchart LR
 
 ไม่มี use case เขียน: `/api/v1/saas` ที่ไม่ใช่ GET ได้ 405 `method_not_allowed` (หลังผ่าน auth)
 
-Sources: `server.py` (`SaasCatalogApi.handle`, `_check_read_auth`), `vendor/service-auth/service_auth/__init__.py`, `saas_catalog_mcp.py`, `scripts/validate_catalog.py`, `railway.toml`, `Dockerfile`, `PRODUCT.md`, platform-uptime-worker `src/targets.ts` (read-only)
+Sources: `server.py` (`SaasCatalogApi.handle`, `_check_read_auth`), `vendor/service-auth/service_auth/__init__.py`, `saas_catalog_mcp.py`, `scripts/validate_catalog.py`, `.railway/railway.ts`, `Dockerfile`, `PRODUCT.md`, platform-uptime-worker `src/targets.ts` (read-only)
 
 ## Open questions
 

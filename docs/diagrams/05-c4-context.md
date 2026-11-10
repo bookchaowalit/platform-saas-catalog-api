@@ -26,7 +26,7 @@ C4Context
 
 หมายเหตุ: ไม่มีระบบ provider ภายนอกใด ๆ ใน context นี้ (API ไม่เรียก SaaS ที่อยู่ในแค็ตตาล็อก)
 
-Sources: `server.py`, `saas_catalog_mcp.py`, `_sentry.py`, `railway.toml`, `.railway/railway.ts`, `README.md`, `PRODUCT.md`, platform-uptime-worker `src/targets.ts`, platform-api-gateway `routes.json` + `README.md`, Solo Web `lib/backends.ts` (all read-only)
+Sources: `server.py`, `saas_catalog_mcp.py`, `_sentry.py`, `.railway/railway.ts`, `.railway/railway.ts`, `README.md`, `PRODUCT.md`, platform-uptime-worker `src/targets.ts`, platform-api-gateway `routes.json` + `README.md`, Solo Web `lib/backends.ts` (all read-only)
 
 ## Open questions
 

@@ -41,7 +41,7 @@ flowchart LR
 
 ไม่มี outbound integration อื่น: ไม่มี webhook, ไม่มี provider SDK, ไม่มี DB client ใน `server.py` (`sentry-sdk` เป็นตัวเดียวที่ออก network)
 
-Sources: `server.py`, `saas_catalog_mcp.py`, `_sentry.py`, `railway.toml`, `contracts/saas-catalog.v1.md`, platform-uptime-worker `src/targets.ts`, platform-api-gateway `routes.json`, Solo Web `lib/backends.ts` (read-only)
+Sources: `server.py`, `saas_catalog_mcp.py`, `_sentry.py`, `.railway/railway.ts`, `contracts/saas-catalog.v1.md`, platform-uptime-worker `src/targets.ts`, platform-api-gateway `routes.json`, Solo Web `lib/backends.ts` (read-only)
 
 ## Open questions
 
