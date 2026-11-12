@@ -466,7 +466,12 @@ class SaasCatalogRequestHandler(BaseHTTPRequestHandler):
 
     def _dispatch(self) -> None:
         result = gateway_http.result_for(
-            self.gateway, self.command, self.path, self.headers, self._body
+            self.gateway,
+            self.command,
+            self.path,
+            self.headers,
+            self._body,
+            extra_open=("/ready",),
         )
         if gateway_http.refused(self.gateway, self.path, result):
             self._write(Response(403, {"error": "gateway_required"}), origin=None)
