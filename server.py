@@ -456,6 +456,8 @@ class SaasCatalogRequestHandler(BaseHTTPRequestHandler):
     api = SaasCatalogApi()
     # SPEC-002 (platform-api-gateway): set in main() from GATEWAY_ASSERTION_*; None = off.
     gateway: gateway.GatewayCheck | None = None
+    # A socket timeout, so a client that stops sending a body cannot hold a worker thread.
+    timeout = 30
 
     def _body(self) -> bytes:
         length = int(self.headers.get("Content-Length") or 0)
